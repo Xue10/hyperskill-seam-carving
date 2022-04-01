@@ -1,6 +1,7 @@
 package seamcarving
 
 import java.awt.Color
+import java.awt.image.BufferedImage
 import java.io.File
 import java.util.Collections.max
 import java.util.Collections.min
@@ -51,23 +52,63 @@ fun main(args: Array<String>) {
         }
     }
     val path = mutableMapOf<Pair<Int, Int>, Double>()
-//    val maxEnergy = max(energies.values)
-    for (x in 0 until width) {
-        path[Pair(x, 0)] = energies[Pair(x, 0)]!!
+//    for (x in 0 until width) {
+//        path[Pair(x, 0)] = energies[Pair(x, 0)]!!
+//    }
+//    for (y in 1 until height) {
+//        for (x in 0 until width) {
+//            val cellList = mutableListOf<Double>()
+//            path[Pair(x - 1, y - 1)]?.let { cellList.add(it) }
+//            path[Pair(x, y - 1)]?.let { cellList.add(it) }
+//            path[Pair(x + 1, y - 1)]?.let { cellList.add(it) }
+//            path[Pair(x, y)] = min(cellList) + energies[Pair(x, y)]!!
+//        }
+//    }
+//    val minKeyList = mutableListOf<Pair<Int, Int>>()
+//    val lastLine = mutableMapOf<Pair<Int, Int>, Double>()
+//    for (x in 0 until width) {
+//        lastLine[Pair(x, height - 1)] = path[Pair(x, height - 1)]!!
+//    }
+//    val minEnergySum = min(lastLine.values)
+//    var minKey = Pair(-1, -1)
+//    for (e in lastLine) {
+//        if (e.value == minEnergySum) {
+//            minKeyList.add(e.key)
+//            minKey = e.key
+//            break
+//        }
+//    }
+//    while (minKey.second > 0) {
+//        val h = minKey.second - 1
+//        var tempMinKey = Pair(minKey.first, h)
+//        var tempMin = path[tempMinKey]!!
+//        for (i in minKey.first -1 .. minKey.first + 1) {
+//            if ((path[Pair(i, h)] ?: tempMin) < tempMin) {
+//                tempMinKey = Pair(i, h)
+//                tempMin = path[tempMinKey]!!
+//            }
+//        }
+//        minKeyList.add(tempMinKey)
+//        minKey = tempMinKey
+//    }
+
+
+    for (y in 0 until height) {
+        path[Pair(0, y)] = energies[Pair(0, y)]!!
     }
-    for (y in 1 until height) {
-        for (x in 0 until width) {
+    for (x in 1 until width) {
+        for (y in 0 until height) {
             val cellList = mutableListOf<Double>()
             path[Pair(x - 1, y - 1)]?.let { cellList.add(it) }
-            path[Pair(x, y - 1)]?.let { cellList.add(it) }
-            path[Pair(x + 1, y - 1)]?.let { cellList.add(it) }
+            path[Pair(x - 1, y)]?.let { cellList.add(it) }
+            path[Pair(x - 1, y + 1)]?.let { cellList.add(it) }
             path[Pair(x, y)] = min(cellList) + energies[Pair(x, y)]!!
         }
     }
     val minKeyList = mutableListOf<Pair<Int, Int>>()
     val lastLine = mutableMapOf<Pair<Int, Int>, Double>()
-    for (x in 0 until width) {
-        lastLine[Pair(x, height - 1)] = path[Pair(x, height - 1)]!!
+    for (y in 0 until height) {
+        lastLine[Pair(width - 1, y)] = path[Pair(width - 1, y)]!!
     }
     val minEnergySum = min(lastLine.values)
     var minKey = Pair(-1, -1)
@@ -78,13 +119,13 @@ fun main(args: Array<String>) {
             break
         }
     }
-    while (minKey.second > 0) {
-        val h = minKey.second - 1
-        var tempMinKey = Pair(minKey.first, h)
+    while (minKey.first > 0) {
+        val w = minKey.first - 1
+        var tempMinKey = Pair(w, minKey.second)
         var tempMin = path[tempMinKey]!!
-        for (i in minKey.first -1 .. minKey.first + 1) {
-            if ((path[Pair(i, h)] ?: tempMin) < tempMin) {
-                tempMinKey = Pair(i, h)
+        for (i in minKey.second -1 .. minKey.second + 1) {
+            if ((path[Pair(w, i)] ?: tempMin) < tempMin) {
+                tempMinKey = Pair(w, i)
                 tempMin = path[tempMinKey]!!
             }
         }
