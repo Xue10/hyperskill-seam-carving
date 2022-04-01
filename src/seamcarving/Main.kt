@@ -3,7 +3,6 @@ package seamcarving
 import java.awt.Color
 import java.awt.image.BufferedImage
 import java.io.File
-import java.util.Collections.max
 import java.util.Collections.min
 import javax.imageio.ImageIO
 import kotlin.math.pow
@@ -12,7 +11,25 @@ import kotlin.math.sqrt
 fun main(args: Array<String>) {
     val input = File(args[1])
     val output = File(args[3])
+    val widthToRemove = args[5].toInt()
+    val heightToRemove = args[7].toInt()
     val image = ImageIO.read(input)
+    var outImage = image
+    while (outImage.width + widthToRemove > image.width) {
+        val energies = calculateEnergy(outImage)
+        val verticalSeam = getVerticalSeam(outImage, energies)
+        outImage = removeVerticalSeam(outImage, verticalSeam)
+    }
+    while (outImage.height + heightToRemove > image.height) {
+        val energies = calculateEnergy(outImage)
+        val horizontalSeam = getHorizontalSeam(outImage, energies)
+        outImage = removeHorizontalSeam(outImage, horizontalSeam)
+    }
+
+    ImageIO.write(outImage, "png", output)
+}
+
+fun calculateEnergy(image: BufferedImage): Map<Pair<Int, Int>, Double> {
     val width = image.width
     val height = image.height
     val energies = mutableMapOf<Pair<Int, Int>, Double>()
@@ -51,70 +68,81 @@ fun main(args: Array<String>) {
             energies[Pair(x, y)] = energy
         }
     }
-    val path = mutableMapOf<Pair<Int, Int>, Double>()
-//    for (x in 0 until width) {
-//        path[Pair(x, 0)] = energies[Pair(x, 0)]!!
-//    }
-//    for (y in 1 until height) {
-//        for (x in 0 until width) {
-//            val cellList = mutableListOf<Double>()
-//            path[Pair(x - 1, y - 1)]?.let { cellList.add(it) }
-//            path[Pair(x, y - 1)]?.let { cellList.add(it) }
-//            path[Pair(x + 1, y - 1)]?.let { cellList.add(it) }
-//            path[Pair(x, y)] = min(cellList) + energies[Pair(x, y)]!!
-//        }
-//    }
-//    val minKeyList = mutableListOf<Pair<Int, Int>>()
-//    val lastLine = mutableMapOf<Pair<Int, Int>, Double>()
-//    for (x in 0 until width) {
-//        lastLine[Pair(x, height - 1)] = path[Pair(x, height - 1)]!!
-//    }
-//    val minEnergySum = min(lastLine.values)
-//    var minKey = Pair(-1, -1)
-//    for (e in lastLine) {
-//        if (e.value == minEnergySum) {
-//            minKeyList.add(e.key)
-//            minKey = e.key
-//            break
-//        }
-//    }
-//    while (minKey.second > 0) {
-//        val h = minKey.second - 1
-//        var tempMinKey = Pair(minKey.first, h)
-//        var tempMin = path[tempMinKey]!!
-//        for (i in minKey.first -1 .. minKey.first + 1) {
-//            if ((path[Pair(i, h)] ?: tempMin) < tempMin) {
-//                tempMinKey = Pair(i, h)
-//                tempMin = path[tempMinKey]!!
-//            }
-//        }
-//        minKeyList.add(tempMinKey)
-//        minKey = tempMinKey
-//    }
+    return energies
+}
 
-
-    for (y in 0 until height) {
-        path[Pair(0, y)] = energies[Pair(0, y)]!!
+fun getVerticalSeam(image: BufferedImage, energies: Map<Pair<Int, Int>, Double>): Map<Int, Int> {
+    val minEnergyMap = mutableMapOf<Pair<Int, Int>, Double>()
+    val width = image.width
+    val height = image.height
+    for (x in 0 until width) {
+        minEnergyMap[Pair(x, 0)] = energies[Pair(x, 0)]!!
     }
-    for (x in 1 until width) {
-        for (y in 0 until height) {
+    for (y in 1 until height) {
+        for (x in 0 until width) {
             val cellList = mutableListOf<Double>()
-            path[Pair(x - 1, y - 1)]?.let { cellList.add(it) }
-            path[Pair(x - 1, y)]?.let { cellList.add(it) }
-            path[Pair(x - 1, y + 1)]?.let { cellList.add(it) }
-            path[Pair(x, y)] = min(cellList) + energies[Pair(x, y)]!!
+            minEnergyMap[Pair(x - 1, y - 1)]?.let { cellList.add(it) }
+            minEnergyMap[Pair(x, y - 1)]?.let { cellList.add(it) }
+            minEnergyMap[Pair(x + 1, y - 1)]?.let { cellList.add(it) }
+            minEnergyMap[Pair(x, y)] = min(cellList) + energies[Pair(x, y)]!!
         }
     }
-    val minKeyList = mutableListOf<Pair<Int, Int>>()
+    val seam = mutableMapOf<Int, Int>()
     val lastLine = mutableMapOf<Pair<Int, Int>, Double>()
-    for (y in 0 until height) {
-        lastLine[Pair(width - 1, y)] = path[Pair(width - 1, y)]!!
+    for (x in 0 until width) {
+        lastLine[Pair(x, height - 1)] = minEnergyMap[Pair(x, height - 1)]!!
     }
     val minEnergySum = min(lastLine.values)
     var minKey = Pair(-1, -1)
     for (e in lastLine) {
         if (e.value == minEnergySum) {
-            minKeyList.add(e.key)
+            seam[e.key.second] = e.key.first
+            minKey = e.key
+            break
+        }
+    }
+    while (minKey.second > 0) {
+        val h = minKey.second - 1
+        var tempMinKey = Pair(minKey.first, h)
+        var tempMin = minEnergyMap[tempMinKey]!!
+        for (i in minKey.first -1 .. minKey.first + 1) {
+            if ((minEnergyMap[Pair(i, h)] ?: tempMin) < tempMin) {
+                tempMinKey = Pair(i, h)
+                tempMin = minEnergyMap[tempMinKey]!!
+            }
+        }
+        seam[tempMinKey.second] = tempMinKey.first
+        minKey = tempMinKey
+    }
+    return seam
+}
+
+fun getHorizontalSeam(image: BufferedImage, energies: Map<Pair<Int, Int>, Double>): Map<Int, Int> {
+    val minEnergyMap = mutableMapOf<Pair<Int, Int>, Double>()
+    val width = image.width
+    val height = image.height
+    for (y in 0 until height) {
+        minEnergyMap[Pair(0, y)] = energies[Pair(0, y)]!!
+    }
+    for (x in 1 until width) {
+        for (y in 0 until height) {
+            val cellList = mutableListOf<Double>()
+            minEnergyMap[Pair(x - 1, y - 1)]?.let { cellList.add(it) }
+            minEnergyMap[Pair(x - 1, y)]?.let { cellList.add(it) }
+            minEnergyMap[Pair(x - 1, y + 1)]?.let { cellList.add(it) }
+            minEnergyMap[Pair(x, y)] = min(cellList) + energies[Pair(x, y)]!!
+        }
+    }
+    val seam = mutableMapOf<Int, Int>()
+    val lastLine = mutableMapOf<Pair<Int, Int>, Double>()
+    for (y in 0 until height) {
+        lastLine[Pair(width - 1, y)] = minEnergyMap[Pair(width - 1, y)]!!
+    }
+    val minEnergySum = min(lastLine.values)
+    var minKey = Pair(-1, -1)
+    for (e in lastLine) {
+        if (e.value == minEnergySum) {
+            seam[e.key.first] = e.key.second
             minKey = e.key
             break
         }
@@ -122,21 +150,49 @@ fun main(args: Array<String>) {
     while (minKey.first > 0) {
         val w = minKey.first - 1
         var tempMinKey = Pair(w, minKey.second)
-        var tempMin = path[tempMinKey]!!
+        var tempMin = minEnergyMap[tempMinKey]!!
         for (i in minKey.second -1 .. minKey.second + 1) {
-            if ((path[Pair(w, i)] ?: tempMin) < tempMin) {
+            if ((minEnergyMap[Pair(w, i)] ?: tempMin) < tempMin) {
                 tempMinKey = Pair(w, i)
-                tempMin = path[tempMinKey]!!
+                tempMin = minEnergyMap[tempMinKey]!!
             }
         }
-        minKeyList.add(tempMinKey)
+        seam[tempMinKey.first] = tempMinKey.second
         minKey = tempMinKey
     }
+    return seam
+}
 
-    for ((x, y) in minKeyList) {
-        image.setRGB(x, y, Color(255, 0, 0).rgb)
+fun removeVerticalSeam(image: BufferedImage, seam: Map<Int, Int>): BufferedImage {
+    val width = image.width
+    val height = image.height
+    val newImage = BufferedImage(width - 1, height, image.type)
+    for (y in 0 until height) {
+        val xSeam = seam[y]!!
+        for (x in 0 until width) {
+            if (x == xSeam) {
+                continue
+            }
+            val xOut = if (x > xSeam) x - 1 else x
+            newImage.setRGB(xOut, y, image.getRGB(x, y))
+        }
     }
+    return newImage
+}
 
-
-    ImageIO.write(image, "png", output)
+fun removeHorizontalSeam(image: BufferedImage, seam: Map<Int, Int>): BufferedImage {
+    val width = image.width
+    val height = image.height
+    val newImage = BufferedImage(width, height - 1, image.type)
+    for (x in 0 until width) {
+        val ySeam = seam[x]!!
+        for (y in 0 until height) {
+            if (y == ySeam) {
+                continue
+            }
+            val yOut = if (y > ySeam) y - 1 else y
+            newImage.setRGB(x, yOut, image.getRGB(x, y))
+        }
+    }
+    return newImage
 }
